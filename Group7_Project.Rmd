@@ -1,0 +1,425 @@
+---
+title: "Group7_Project"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+
+#install.packages("tidyverse")
+#install.packages("Hmisc")
+#install.packages("readxl")
+#install.packages("psych")
+#install.packages('dplyr')
+#install.packages("ggplot2")
+#install.packages('DataExplorer')
+#install.packages("ggcorrplot")
+#install.packages('plyr')
+#install.packages('car')
+#install.packages('stats')
+#install.packages("ggthemes")
+#install.packages("GGally")
+#install.packages('Rmisc')
+#install.packages('olsrr')
+#install.packages('ggpubr')
+#install.packages('lubridate')
+#install.packages('rpart')
+#install.packages("rpart.plot")
+
+```
+
+```{r}
+
+#Call Packages:
+library(tidyverse)
+library(Hmisc)
+library(readxl)
+library(psych)
+library(dplyr)
+library(DataExplorer)
+library(ggplot2)
+library(ggcorrplot)
+library(Rmisc)
+library(car)
+library(stats)
+library(ROCR)
+library(olsrr)
+library(ggthemes)
+library(GGally)
+library(ggpubr)
+library(rpart)
+library(rpart.plot)
+library(forecast)
+
+```
+
+```{r}
+
+getwd()
+setwd("/Users/poojithaalla/Downloads")
+read.csv("led.csv")
+
+#Assigning dataframe name to the data
+all_data<-read.csv("led.csv")
+
+#1.EXPLORATORY DATA ANALYSIS: 
+#The exploratory data analysis contains of three steps: 
+#1.1 Understanding the variables in the dataset 
+#1.2 Cleaning the dataset
+#1.3 Analysis of the relationship betweeen the variables in the dataset. 
+
+#1.1 Understanding the Variables:
+#checking the dimension of the data
+dim(all_data)
+#There are 2938 observations of 22 variables
+
+#Finding the data types in data
+sapply(all_data,class) 
+#All the variables are either in the integer and numeric format. Only the Country and Status are in character format.
+summary(all_data) 
+#We observe the Minimum, Maximum, Median, Mean, 1st Quartile and 3rd Quartile values for all the 22 variables. 
+#Along with that we can also see the NA values for each variable. Here it is observed that population has the most NA values.
+
+#1.2 Cleaning the dataset:
+#Removing Countries coloumn: 
+filtered_data <- all_data %>%
+  select(-'Country')
+#We removed country because we mainly wanted to classify and determine life expectancy for the status in a range of years rather than different countries. 
+
+#Omitting the na values: 
+New_data <- filtered_data %>%
+  na.omit()
+#we have removed 1289 NA values and retained 1649 values. 
+
+#Finding the data types in the New_data and checking NA values: 
+sapply(New_data,class) 
+summary(New_data) #Observe all NA values have been removed.
+
+#1.3 Analysis of the relationship between the variables:
+#Descriptive Statistics
+describe(New_data)
+#This provides central tendency measures,Interquartile Range and Skewness for all variables. 
+
+#Rename status to binary: 0 - 'Developing' and 1 - 'Developed'
+New_data$Status <- ifelse(New_data$Status=="Developed",1,0)
+New_data
+
+#Correlation analysis:
+cor(New_data)
+ggcorr(New_data, label = TRUE, label_size = 1.5, label_color = "black", hjust = 0.75, size = 1.5, color = "black")
+#The Correlation with life expectancy seems to be high with the Adult Mortality, BMI, HIV, Thinness1, Thinness2, Income and Schooling.  
+
+#Boxplot for Removing Outliers: 
+boxplot(New_data$AdultMortality, plot=FALSE)$out
+outliers <- boxplot(New_data$AdultMortality, plot=FALSE)$out
+New_data1 <- New_data[-which(New_data$AdultMortality %in% outliers),]
+
+boxplot(New_data$BMI, plot=FALSE)$out
+
+boxplot(New_data$HIV.AIDS, plot=FALSE)$out
+outliers <- boxplot(New_data1$HIV.AIDS, plot=FALSE)$out
+New_data2 <- New_data1[-which(New_data1$HIV.AIDS %in% outliers),]
+
+boxplot(New_data$thinness1.19years, plot=FALSE)$out
+outliers <- boxplot(New_data2$thinness1.19years, plot=FALSE)$out
+New_data3 <- New_data2[-which(New_data2$thinness1.19years %in% outliers),]
+
+boxplot(New_data$thinness5.9years, plot=FALSE)$out
+outliers <- boxplot(New_data3$thinness5.9years, plot=FALSE)$out
+New_data4 <- New_data3[-which(New_data3$thinness5.9years %in% outliers),]
+
+boxplot(New_data$Incomecompositionofresources, plot=FALSE)$out
+outliers <- boxplot(New_data4$Incomecompositionofresources, plot=FALSE)$out
+New_data5 <- New_data4[-which(New_data4$Incomecompositionofresources %in% outliers),]
+
+boxplot(New_data$Schooling, plot=FALSE)$out
+outliers <- boxplot(New_data5$Schooling, plot=FALSE)$out
+New_data6 <- New_data5[-which(New_data5$Schooling %in% outliers),]
+
+boxplot(New_data$Lifeexpectancy, plot=FALSE)$out
+outliers <- boxplot(New_data6$Lifeexpectancy, plot=FALSE)$out
+New_data7 <- New_data6[-which(New_data6$Lifeexpectancy %in% outliers),]
+
+boxplot(New_data$AdultMortality ~ New_data$Status,outline=FALSE,col='steelblue',xlab='Status',ylab='Adult Mortality')
+boxplot(New_data$Schooling ~ New_data$Status,outline=FALSE, col='steelblue',xlab='Status', ylab='Schooling')
+boxplot(New_data$Incomecompositionofresources ~ New_data$Status, col='steelblue',outline=FALSE, xlab='Status', ylab='Income composition')
+boxplot(New_data$HIV.AIDS ~ New_data$Status,outline=FALSE, col='steelblue',xlab='Status', ylab='HIV.AIDS')
+boxplot(New_data$thinness1.19years ~ New_data$Status,outline=FALSE,col='steelblue',xlab='Status',ylab='Polio')
+boxplot(New_data$BMI ~ New_data$Status,outline=FALSE, col='steelblue',xlab='Status',ylab='BMI')
+boxplot(New_data$thinness5.9years ~ New_data$Status,outline=FALSE, col='steelblue',xlab='Status',ylab='HepatitisB')
+boxplot(New_data$Lifeexpectancy ~ New_data$Status,outline=FALSE, col='steelblue',xlab='Status',ylab='Life Expectancy')
+
+Final_data <- New_data7 %>%
+  select('Year','Population','Status','Lifeexpectancy','AdultMortality', 'BMI', 'HIV.AIDS', thinness1.19years,thinness5.9years,Incomecompositionofresources,Schooling)
+dim(Final_data)
+#It contained 1054 observations for 11 variables.
+
+cor(Final_data)
+ggcorr(Final_data, label = TRUE, label_size = 1.5, label_color = "black", hjust = 0.75, size = 1.5, color = "black")
+#we observe that the BMI has reduced coreelation to life expectancy and therefore 
+```
+
+```{r}
+#Visualizing the plots for the life expectancy based on various variables in developed and developing countries for population/1000 from years 2000-2015. 
+#Correlation analysis for Adult Mortality: 
+dataframe_1 <- Final_data %>%
+  select('Status', 'Lifeexpectancy', 'AdultMortality','Year', 'Population')
+
+test1 <- ggplot(dataframe_1) + aes(AdultMortality,Lifeexpectancy, size = Population/1000) 
+test1 + geom_point(aes(colour=Year)) + facet_wrap( ~ Status)
+
+#Correlation analysis for HIV.AIDS: 
+dataframe_3 <- Final_data %>%
+  select('Status', 'Lifeexpectancy', 'HIV.AIDS','Year', 'Population')
+
+test3 <- ggplot(dataframe_3) + aes(x = HIV.AIDS,Lifeexpectancy, size = Population/1000) 
+test3 + geom_point(aes(colour=Year)) + facet_wrap( ~ Status)
+
+#Correlation analysis for thinness1.19years: 
+dataframe_4 <- Final_data %>%
+  select('Status', 'Lifeexpectancy', 'thinness1.19years','Year', 'Population')
+
+test4 <- ggplot(dataframe_4) + aes(x = thinness1.19years,Lifeexpectancy, size = Population/1000) 
+test4 + geom_point(aes(colour=Year)) + facet_wrap( ~ Status)
+
+#Correlation analysis for thinness5.9years: 
+dataframe_5 <- New_data %>%
+  select('Status', 'Lifeexpectancy', 'thinness5.9years','Year', 'Population')
+
+test5 <- ggplot(dataframe_5) + aes(x = thinness5.9years,Lifeexpectancy, size = Population/1000) 
+test5 + geom_point(aes(colour=Year)) + facet_wrap( ~ Status)
+
+
+#Correlation analysis for Incomecompositionofresources: 
+dataframe_6 <- New_data %>%
+  select('Status', 'Lifeexpectancy', 'Incomecompositionofresources','Year', 'Population')
+
+test6 <- ggplot(dataframe_6) + aes(x = Incomecompositionofresources,Lifeexpectancy, size = Population/1000) 
+test6 + geom_point(aes(colour=Year)) + facet_wrap( ~ Status)
+
+#Correlation analysis for Schooling: 0.7
+dataframe_7 <- New_data %>%
+  select('Status', 'Lifeexpectancy', 'Schooling','Year', 'Population')
+
+test7 <- ggplot(dataframe_7) + aes(x = Schooling,Lifeexpectancy, size = Population/1000) 
+test7 + geom_point(aes(colour=Year)) + facet_wrap( ~ Status)
+
+#CONFIDENCE INTERVAL FOR EACH FEATURE SELECTED:
+CI(Final_data$Schooling, ci= 0.95)
+CI(Final_data$Incomecompositionofresources, ci= 0.95)
+CI(Final_data$thinness5.9years, ci= 0.95)
+CI(Final_data$thinness1.19years, ci= 0.95)
+CI(Final_data$HIV.AIDS, ci= 0.95)
+CI(Final_data$BMI, ci= 0.95)
+CI(Final_data$AdultMortality, ci= 0.95)
+
+#NORMALITY TESTING: 
+ggqqplot(Final_data$AdultMortality, col = "steelblue", title = "Adult Mortality") 
+shapiro.test(Final_data$AdultMortality) #Not normally distributed. 
+
+ggqqplot(Final_data$HIV.AIDS, col = "steelblue", title = "HIV.AIDS") 
+shapiro.test(Final_data$HIV.AIDS) #Not normally distributed. 
+
+ggqqplot(Final_data$thinness1.19years, col = "steelblue", title = "thinness.19years") 
+shapiro.test(Final_data$thinness1.19years) #Not normally distributed.
+
+ggqqplot(Final_data$thinness5.9years, col = "steelblue", title = "thinness.9years") 
+shapiro.test(Final_data$thinness5.9years) #Not normally distributed.
+
+ggqqplot(Final_data$Incomecompositionofresources, col = "steelblue", title = "Income composition") 
+shapiro.test(Final_data$Incomecompositionofresources) #It is not normally distributed. 
+
+ggqqplot(Final_data$Schooling, col = "steelblue", title = "Schooling") 
+shapiro.test(Final_data$Schooling) #It is not normally distributed.
+
+# Since the p-values for all the features are significantly lower than 0.05, we reject the null hypothesis. And, therefore, accept the alternate hypothesis that The features in the data are not normally distributed.
+#not normally distributed so we perform a non-parametric test.
+
+#The Kruskal–Wallis test:
+#The Kruskal–Wallis test (1952) is a nonparametric approach to the one-way ANOVA. The procedure is used to compare three or more groups on a dependent variable that is measured on at least an ordinal level.
+kruskal.test(Final_data$Lifeexpectancy ~ Final_data$AdultMortality, data = Final_data)
+kruskal.test(Final_data$Lifeexpectancy ~ Final_data$HIV.AIDS, data = Final_data)
+kruskal.test(Final_data$Lifeexpectancy ~ Final_data$thinness1.19years, data = Final_data)
+kruskal.test(Final_data$Lifeexpectancy ~ Final_data$thinness5.9years, data = Final_data)
+kruskal.test(Final_data$Lifeexpectancy ~ Final_data$Incomecompositionofresources, data = Final_data)
+kruskal.test(Final_data$Lifeexpectancy ~ Final_data$Schooling, data = Final_data)
+#As the p-value is less than the significance level 0.05, we can conclude that there are significant differences between life expectancy and teh features.
+```
+
+# Linear Regression:
+#Hypothesis
+#H0-The factors do not affect the life expectancy
+#H1- The factors  affect the life expectancy
+
+#Backward Step-wise linear regression
+#linear regression for all the independent and dependent variables
+```{r}
+#Life Expectancy Vs Adult Mortality
+relation <- lm(Lifeexpectancy ~ AdultMortality, data=Final_data)
+print(summary(relation))
+plot(relation, main = "Life Expectancy Vs Adult Mortality")
+
+#Life Expectancy Vs HIV.AIDS
+relation2 <- lm(Lifeexpectancy ~ HIV.AIDS, data=Final_data)
+print(summary(relation2))
+
+plot(relation2, main = "Life Expectancy Vs HIV.AIDS")
+
+#Life Expectancy Vs thinness1.19years
+relation3 <- lm(Lifeexpectancy ~ thinness1.19years, data=Final_data)
+print(summary(relation3))
+
+plot(relation3, main = "Life Expectancy Vs thinness1.19years")
+
+#Life Expectancy Vs thinness5.9years
+relation4 <- lm(Lifeexpectancy ~ thinness5.9years, data=Final_data)
+print(summary(relation4))
+
+plot(relation4, main = "Life Expectancy Vs thinness5.9years")
+
+#Life Expectancy Vs Income_composition
+relation5 <- lm(Lifeexpectancy ~ Incomecompositionofresources, data=Final_data)
+print(summary(relation5))
+
+plot(relation5, main = "Life Expectancy Vs Income_composition")
+
+#Life Expectancy Vs Schooling
+relation6 <- lm(Lifeexpectancy ~ Schooling, data=Final_data)
+print(summary(relation6))
+
+plot(relation6, main = "Life Expectancy Vs Schooling")
+
+#we finalize our dataset with the factors that we think are influencing life expectancy.
+#define model with all predictors
+all <- lm(Lifeexpectancy ~ Schooling+Incomecompositionofresources+thinness5.9years+thinness1.19years+HIV.AIDS+BMI+AdultMortality, data = Final_data)
+summary(all)
+
+```
+
+```{r}
+
+#Since the variables are correlated we use backward step-wise model:
+#perform backward step-wise regression
+backward <- step(all, direction='backward', scope=formula(all), trace=0)
+summary(backward)
+
+#view results of backward stepwise regression
+backward$anova
+
+#view final model
+backward$coefficients
+
+#plots for the final variables
+plot(backward)
+
+#Interpretation of the plots:
+##Residual vs Fitted- There is a clear indication of non-linearity present in this plot. Furthermore, we see that the variance appears to be increasing first and then decreasing in fitted value.
+##Normal QQ plot- The residuals appear non-normal.
+##Scale-location plot - The residual variance seems to decrease and then increase through most of the plot. This is indicated by the ireegular sloping of the red line, which we can interpret as the standard deviation of the residuals at the given level of fitted value.
+##Residuals vs Leverage- Some of the points appear to be outliers.
+
+# Score Test for Heteroscedasticity
+ols_test_score(backward)
+
+#p-value is less than the significance level 0.05. Hence, we may reject the null hypothesis and conclude that the variance is not homogeneous. i.e., Homoscedasticity
+
+# Checking effect of Auto-correlation
+durbinWatsonTest(backward)
+
+#p-value (0) < 0.05 , Hence, we may reject the null hypothesis and conclude that there is autocorrelation between errors. i.e., Errors are correlated.
+
+# Detecting Multicolinearity
+vif(backward)
+
+#Variance inflation factor for predictors are less than 5 (as a rule of thumb) , Hence there is no multicolinearity between predictors.
+
+# Checking Normality of Errors
+shapiro.test(backward$residuals)
+
+#Normality does not hold since p-value < 0.05
+
+# Plotting Histogram for Residuals
+hist(backward$residuals)
+
+# Fitting second order orthogonal polynomial model in two variables to avoid multicolinearity
+pm1 <- lm(Lifeexpectancy ~ poly(Schooling,2)+poly(Incomecompositionofresources,2)+poly(thinness5.9years,2)+poly(HIV.AIDS,2)+poly(BMI,2)+poly(AdultMortality,2), data = Final_data)
+summary(pm1)
+
+#It is clear from the coefficients section of the above output that second order of Schooling, diphtheria, AdultMortality predictor and 1st and 2nd order of Polio, BMI predictor are not statistically significant (p-value > 0.05). Hence, we Don't include these in the model.
+pm2 <- lm(Lifeexpectancy ~ Schooling+poly(Incomecompositionofresources,2)+poly(thinness5.9years,2)+poly(HIV.AIDS,2)+poly(AdultMortality,2), data = Final_data)
+summary(pm2)
+
+#H0 : The improvement in Adjusted R-squared is not statistically significant.
+#H1 : The improvement in Adjusted R-squared is statistically significant.
+
+# Performing ANOVA to test the above stated null hypothesis
+anova(backward, pm2)
+
+#Since this p-value is extremely less than 0.05, hence we have sufficient evidence from the data to reject the null hypothesis and accept the alternative.
+#That's why the improvement in Adjusted R-squared is statistically significant.
+#Hence, Adopt the second order orthogonal polynomial model at this stage.
+
+# Fitting third order (orthogonal) polynomial model in two variables to avoid multicolinearity
+pm3 <- lm(Lifeexpectancy ~ poly(Schooling,3)+poly(Incomecompositionofresources,3)+poly(thinness5.9years,3)+poly(HIV.AIDS,3)+poly(AdultMortality,3), data = Final_data)
+summary(pm3)
+
+pm4 <- lm(Lifeexpectancy ~poly(Incomecompositionofresources,3)+poly(thinness5.9years,3)+poly(HIV.AIDS,2)+AdultMortality, data = Final_data)
+summary(pm4)
+
+#Created model is statistically significant since p-value <<< 0.05
+#From the coefficients section, it is clear that all coefficients are statistically significant since p-value <<< 0.05
+#This third order orthogonal polynomial model after removing Schooling,third order of HIV>AIDS, second and third order of Diphtheria,second and third order of AdultMortality predictors explains 88.42% variability of target (Lifeexpectancy) that is a better indication with respect to the second order orthogonal polynomial regression model.
+#Residual standard error for the model is 2.994
+
+#H0 : The improvement in Adjusted R-squared is not statistically significant.
+#H1 : The improvement in Adjusted R-squared is statistically significant.
+anova(pm2, pm4)
+
+#Since this value is extremely less than 0.05, hence we have sufficient evidence from the data to reject the null hypothesis and accept the alternative.
+#That's why the improvement in Adjusted R-squared is statistically significant.
+#Hence, Adopt the third order orthogonal polynomial model.
+```
+
+
+#Predictive Analysis: 
+#Let us take an example of time analysis series which is a method of predictive analysis in R programming:
+
+```{r}
+## prediction using decision tree classifier  
+tree<-rpart(Lifeexpectancy~Incomecompositionofresources ,data=Final_data)
+validate<-data.frame(Incomecompositionofresources=c(0.46))
+result<-predict(tree,validate)
+print(result)
+
+rpart.plot(tree,box.palette="RdBu", shadow.col="gray", nn=TRUE)
+
+tree1<-rpart(Lifeexpectancy~Schooling ,data=Final_data)
+validate1<-data.frame(Schooling=c(0.46))
+result1<-predict(tree1,validate1)
+print(result)
+
+rpart.plot(tree1,box.palette="RdBu", shadow.col="gray", nn=TRUE)
+
+
+predict_data <- Final_data %>%
+  select('Year','Lifeexpectancy')
+
+# Convert as time series
+airTS = ts(predict_data)
+
+# Plot multivariate ts
+plot(airTS[,1:2])
+
+# Run auto.arima on a single ts
+arima_fit = auto.arima(airTS[,2])
+#
+
+# Forecast for the next 15 time units
+arima_forecast = forecast(arima_fit, h = 15)
+
+# Plot forecasts
+plot(arima_forecast, col = "grey")
+
+```
+
+
